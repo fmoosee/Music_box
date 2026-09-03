@@ -1,0 +1,16 @@
+Utilizar branchs isoladas:
+
+git checkout -b [branch]
+
+branch: 
+    display
+    rtc
+    audio
+    main
+
+
+final do codigo utilizar:
+    git checkout main
+    git pull origin main
+    git merge [branch]
+    git push origin main
