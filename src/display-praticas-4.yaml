@@ -1,0 +1,416 @@
+# >>> LVGL Designer - generated from the canvas. >>>
+# This block is regenerated from the canvas - edits here are not preserved.
+font:
+  - file:
+      type: gfonts
+      family: Inter
+      weight: 700
+    id: inter_25b
+    size: 25
+    bpp: 4
+    glyphsets: [GF_Latin_Core]
+  - file:
+      type: gfonts
+      family: Montserrat
+      weight: 500
+    id: montserrat_6
+    size: 6
+    bpp: 4
+    glyphsets: [GF_Latin_Core]
+  - file:
+      type: gfonts
+      family: Source Sans 3
+      weight: 700
+    id: source_sans_3_17b
+    size: 17
+    bpp: 4
+    glyphsets: [GF_Latin_Core]
+  - file:
+      url: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+      type: web
+    id: mdi_icons_24
+    size: 24
+    glyphs: [
+      "\U000F04E6",  # Sync
+    ]
+  - file:
+      url: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+      type: web
+    id: mdi_icons_48
+    size: 48
+    glyphs: [
+      "\U000F00F0",  # Calendar Clock
+      "\U000F0E17",  # Calendar Month
+    ]
+
+lvgl:
+  pages:
+    - id: canvas_1
+      bg_color: 0xFFFFFF
+      pad_all: 0
+      scrollbar_mode: "OFF"
+      widgets:
+        - label:
+            id: lv_label_19
+            x: 329
+            y: 109
+            text: "03:23"
+            text_color: 0x010101
+
+        - label:
+            id: widget_1788720227684_ldtyrs08d
+            x: 15
+            y: 109
+            text: "02:22"
+            text_color: 0x010101
+
+        - slider:
+            id: lv_slider_20
+            x: 70
+            y: 115
+            width: 250
+            height: 3
+            value: 33
+            min_value: 0
+            max_value: 100
+            radius: 9999
+
+        - obj:
+            id: lv_obj_22
+            x: 15
+            y: 240
+            width: 150
+            height: 55
+            pad_all: 0
+            widgets:
+              - label:
+                  id: lv_label_26
+                  x: 0
+                  y: 10
+                  width: 95
+                  height: 15
+                  align: TOP_RIGHT
+                  text: "Quinta-Feira"
+                  text_color: 0x010101
+              - label:
+                  id: lv_label_33
+                  x: 24
+                  y: -11
+                  align: BOTTOM_MID
+                  text: "18:34"
+                  text_color: 0x010101
+              - label:
+                  id: lv_icon_47
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: LEFT_MID
+                  text: "\U000F00F0"
+                  text_font: mdi_icons_48
+                  text_align: CENTER
+                  text_color: 0x010101
+
+        - obj:
+            id: lv_obj_28
+            x: 15
+            y: 25
+            width: 255
+            height: 65
+            pad_all: 0
+            widgets:
+              - label:
+                  id: lv_label_18
+                  x: 7
+                  y: 7
+                  width: 240
+                  height: 25
+                  text: "Nome da Musica"
+                  text_color: 0x002775
+                  text_font: inter_25b
+              - label:
+                  id: widget_1788720116626_z21g6slwr
+                  x: 9
+                  y: 39
+                  width: 240
+                  height: 17
+                  text: "Nome do Artista"
+                  text_color: 0x002775
+                  text_font: source_sans_3_17b
+
+        - obj:
+            id: widget_1788722982959_790ozzp80
+            x: 198
+            y: 240
+            width: 150
+            height: 55
+            pad_all: 0
+            widgets:
+              - label:
+                  id: widget_1788722982959_ybasljere
+                  x: 0
+                  y: 0
+                  width: 80
+                  height: 32
+                  align: RIGHT_MID
+                  text: "06/09/2026"
+                  text_color: 0x010101
+              - label:
+                  id: lv_icon_48
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: LEFT_MID
+                  text: "\U000F0E17"
+                  text_font: mdi_icons_48
+                  text_align: CENTER
+                  text_color: 0x002775
+
+        - slider:
+            id: lv_slider_25
+            x: 465
+            y: 70
+            width: 6
+            height: 200
+            value: 42
+            min_value: 0
+            max_value: 100
+            radius: 2
+            pad_all: 0
+            animated: true
+            anim_duration: 0ms
+
+        - obj:
+            id: lv_obj_36
+            x: 240
+            y: 143
+            width: 55
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788718720909_zyj0wyrvb
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  radius: 41
+                  widgets:
+                    - label:
+                        id: lv_icon_44
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\uF051"
+                        text_font: montserrat_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+
+        - obj:
+            id: widget_1788723588459_be1xt9sa7
+            x: 15
+            y: 143
+            width: 55
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788723588459_enqytmef5
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: CENTER
+                  radius: 41
+                  shadow_width: 0
+                  shadow_color: 0x9E9E9E
+                  shadow_opa: 0%
+                  shadow_offset_y: 2
+                  shadow_spread: 0
+                  widgets:
+                    - label:
+                        id: lv_icon_46
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\uF048"
+                        text_font: montserrat_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+
+        - obj:
+            id: widget_1788724274530_o8cw4ygap
+            x: 400
+            y: 30
+            width: 55
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            radius: 7
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788724274530_o7am3iwig
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: CENTER
+                  radius: 10
+                  shadow_width: 0
+                  shadow_color: 0x9E9E9E
+                  shadow_opa: 0%
+                  shadow_offset_y: 0
+                  text_opa: 0%
+                  text_font: montserrat_6
+                  widgets:
+                    - label:
+                        id: lv_icon_40
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\uF067"
+                        text_font: montserrat_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+
+        - obj:
+            id: widget_1788724329841_9bu6vzaoc
+            x: 400
+            y: 100
+            width: 55
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            radius: 7
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788724329841_w6zg3folp
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: CENTER
+                  radius: 10
+                  text_opa: 0%
+                  widgets:
+                    - label:
+                        id: lv_icon_41
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\uF068"
+                        text_font: montserrat_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+
+        - obj:
+            id: widget_1788724331863_p8j8orcky
+            x: 400
+            y: 170
+            width: 55
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            radius: 7
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788724331863_ifezdyhc5
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: CENTER
+                  radius: 10
+                  widgets:
+                    - label:
+                        id: lv_icon_42
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\U000F04E6"
+                        text_font: mdi_icons_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+
+        - obj:
+            id: widget_1788724337571_q4nc3voph
+            x: 400
+            y: 240
+            width: 55
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            radius: 7
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788724337571_dtn2xon4b
+                  x: 0
+                  y: 0
+                  width: 55
+                  height: 55
+                  align: CENTER
+                  radius: 10
+                  widgets:
+                    - label:
+                        id: lv_icon_43
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\uF026"
+                        text_font: montserrat_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+
+        - obj:
+            id: widget_1788724571811_3xmh9fxru
+            x: 120
+            y: 143
+            width: 65
+            height: 55
+            bg_color: 0xFFFFFF
+            border_width: 2
+            border_color: 0xE0E0E0
+            border_opa: 0%
+            radius: 7
+            pad_all: 0
+            widgets:
+              - button:
+                  id: widget_1788724571811_rhhlj9dgh
+                  x: 0
+                  y: 0
+                  width: 65
+                  height: 55
+                  align: CENTER
+                  radius: 10
+                  widgets:
+                    - label:
+                        id: lv_icon_45
+                        x: 0
+                        y: 0
+                        align: CENTER
+                        text: "\uF04B"
+                        text_font: montserrat_24
+                        text_align: CENTER
+                        text_color: 0xFFFFFF
+# <<< end LVGL Designer block <<<
