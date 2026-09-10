@@ -2,14 +2,13 @@
 #include "touch.h"
 #include <SPI.h>
 
-// Buffer de renderização para o LVGL (1/10 da tela)
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[SCREEN_WIDTH * SCREEN_HEIGHT / 10];
 
 static lv_disp_drv_t disp_drv;
-static lv_indev_drv_t indev_drv;
+static lv_indev_drv_t indev_drv_1;
+static lv_indev_drv_t indev_drv_2;
 
-// Primitiva: Envio de comando SPI
 static inline void tft_cmd(uint8_t cmd) {
     digitalWrite(PIN_TFT_DC, LOW);
     digitalWrite(PIN_TFT_CS, LOW);
@@ -17,7 +16,6 @@ static inline void tft_cmd(uint8_t cmd) {
     digitalWrite(PIN_TFT_CS, HIGH);
 }
 
-// Primitiva: Envio de dado SPI
 static inline void tft_data(uint8_t data) {
     digitalWrite(PIN_TFT_DC, HIGH);
     digitalWrite(PIN_TFT_CS, LOW);
@@ -25,14 +23,12 @@ static inline void tft_data(uint8_t data) {
     digitalWrite(PIN_TFT_CS, HIGH);
 }
 
-// Sequência física de reset e comandos do ST7796
 static void tft_init_hardware() {
     pinMode(PIN_TFT_CS, OUTPUT);
     pinMode(PIN_TFT_DC, OUTPUT);
     digitalWrite(PIN_TFT_CS, HIGH);
     digitalWrite(PIN_TFT_DC, HIGH);
 
-    // Pulso limpo de Reset de hardware
     pinMode(PIN_TFT_RST, OUTPUT);
     digitalWrite(PIN_TFT_RST, HIGH);
     delay(20);
@@ -41,11 +37,10 @@ static void tft_init_hardware() {
     digitalWrite(PIN_TFT_RST, HIGH);
     delay(150);
 
-    // Barramento SPI em 14 MHz para evitar listras verticais
     SPI.begin(PIN_TFT_SCLK, -1, PIN_TFT_MOSI, PIN_TFT_CS);
     SPI.beginTransaction(SPISettings(14000000, MSBFIRST, SPI_MODE0));
 
-    tft_cmd(0x01); // Software Reset
+    tft_cmd(0x01); // Reset
     delay(120);
 
     tft_cmd(0x11); // Sleep Out
@@ -55,25 +50,23 @@ static void tft_init_hardware() {
     tft_data(0x55);
     delay(10);
 
-    tft_cmd(0xB4); // Inversão de coluna 1-dot
+    tft_cmd(0xB4); // 1-dot column inversion
     tft_data(0x01);
 
-    tft_cmd(0x36); // Orientação Paisagem (Landscape)
+    tft_cmd(0x36); // Modo Paisagem (Landscape)
     tft_data(0xE8);
     delay(10);
 
-    tft_cmd(0x20); // Display Inversion OFF
+    tft_cmd(0x20); // Inversão OFF
     tft_cmd(0x29); // Display ON
     delay(50);
 }
 
-// Callback de transferência de pixels do LVGL para a memória GRAM do ST7796
 static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
     uint32_t w = (area->x2 - area->x1 + 1);
     uint32_t h = (area->y2 - area->y1 + 1);
     uint32_t len = w * h;
 
-    // Delimita a janela de escrita
     tft_cmd(0x2A);
     tft_data(area->x1 >> 8);
     tft_data(area->x1 & 0xFF);
@@ -86,11 +79,10 @@ static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t
     tft_data(area->y2 >> 8);
     tft_data(area->y2 & 0xFF);
 
-    tft_cmd(0x2C); // Memory Write
+    tft_cmd(0x2C);
     digitalWrite(PIN_TFT_DC, HIGH);
     digitalWrite(PIN_TFT_CS, LOW);
 
-    // Envio dos pixels de 16 bits com swap
     uint16_t *p = (uint16_t *)color_p;
     for (uint32_t i = 0; i < len; i++) {
         SPI.transfer(p[i] >> 8);
@@ -101,9 +93,10 @@ static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t
     lv_disp_flush_ready(disp);
 }
 
-// Callback de leitura do touch capacitivo FT6336
-static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
-    if (touch_has_signal() && touch_touched()) {
+// Callback do Toque 1
+static void my_touchpad_read_1(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
+    touch_read_hardware(); // Atualiza os dois pontos via I2C
+    if (touch_has_signal() && touch_touched_1()) {
         data->state = LV_INDEV_STATE_PR;
         data->point.x = touch_last_x;
         data->point.y = touch_last_y;
@@ -112,18 +105,25 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
     }
 }
 
-void display_init() {
-    // 1. Inicializa o hardware de vídeo via SPI
-    tft_init_hardware();
+// Callback do Toque 2
+static void my_touchpad_read_2(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
+    if (touch_has_signal() && touch_touched_2()) {
+        data->state = LV_INDEV_STATE_PR;
+        data->point.x = touch2_last_x;
+        data->point.y = touch2_last_y;
+    } else {
+        data->state = LV_INDEV_STATE_REL;
+    }
+}
 
-    // 2. Inicializa o Touch I2C
+void display_init() {
+    tft_init_hardware();
     touch_init(SCREEN_WIDTH, SCREEN_HEIGHT, 3);
 
-    // 3. Inicializa o núcleo do LVGL
     lv_init();
     lv_disp_draw_buf_init(&draw_buf, buf, NULL, SCREEN_WIDTH * SCREEN_HEIGHT / 10);
 
-    // 4. Registra o driver de display
+    // Registro do Display
     lv_disp_drv_init(&disp_drv);
     disp_drv.hor_res = SCREEN_WIDTH;
     disp_drv.ver_res = SCREEN_HEIGHT;
@@ -131,11 +131,17 @@ void display_init() {
     disp_drv.draw_buf = &draw_buf;
     lv_disp_drv_register(&disp_drv);
 
-    // 5. Registra o driver de touch
-    lv_indev_drv_init(&indev_drv);
-    indev_drv.type = LV_INDEV_TYPE_POINTER;
-    indev_drv.read_cb = my_touchpad_read;
-    lv_indev_drv_register(&indev_drv);
+    // Registro do Primeiro Indev (Ponteiro 1)
+    lv_indev_drv_init(&indev_drv_1);
+    indev_drv_1.type = LV_INDEV_TYPE_POINTER;
+    indev_drv_1.read_cb = my_touchpad_read_1;
+    lv_indev_drv_register(&indev_drv_1);
+
+    // Registro do Segundo Indev (Ponteiro 2)
+    lv_indev_drv_init(&indev_drv_2);
+    indev_drv_2.type = LV_INDEV_TYPE_POINTER;
+    indev_drv_2.read_cb = my_touchpad_read_2;
+    lv_indev_drv_register(&indev_drv_2);
 }
 
 void display_update() {
