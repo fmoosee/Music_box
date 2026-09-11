@@ -27,6 +27,7 @@ void touch_init(uint16_t w, uint16_t h, uint8_t r)
     touch_width = w;
     touch_height = h;
     ts.begin();
+    Wire.setClock(400000);
     ts.setRotation(r);
 }
 
