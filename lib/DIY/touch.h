@@ -6,7 +6,7 @@
 #define TOUCH_FT6336_SCL 22
 #define TOUCH_FT6336_SDA 21
 #define TOUCH_FT6336_INT 14
-#define TOUCH_FT6336_RST 12
+#define TOUCH_FT6336_RST 33
 
 // Coordenadas para o toque 1
 int touch_last_x = 0;
