@@ -3,9 +3,11 @@
 #include <RTClib.h>
 #include <DFRobotDFPlayerMini.h>
 #include <HardwareSerial.h>
+#include "sun_icons.h"
 
 
 RTC_DS1307 rtc; // Instância da biblioteca RTC
+// Caracteres Unicode UTF-8 de Sol
 
 typedef struct {
     const char* name;      
@@ -39,12 +41,43 @@ lv_obj_t * btn_vol_plus, * btn_vol_minus;
 lv_obj_t * icon_vol_plus, * icon_vol_minus;
 lv_obj_t * btn_next, * btn_previous;
 lv_obj_t * icon_next, * icon_previous;
+lv_obj_t * btn_random, * btn_repeat;
+lv_obj_t * icon_random, * icon_repeat;
+bool       status_repeat = false;
+bool       status_random = false;
 
 lv_obj_t * bar_vol;
 lv_obj_t * icon_bar_vol_plus, * icon_bar_vol_minus;
+lv_obj_t * bar_bright;
+lv_obj_t * icon_bright_max;
+lv_obj_t * icon_bright_min;
+int        light_level = 100;
+lv_obj_t * label_light;
 
 lv_obj_t * list_music;
 lv_obj_t * icon_ble, * icon_wifi;
+
+// Defina o pino do backlight (caso ainda não esteja definido no seu display_driver.h)
+#ifndef PWM_LIGHT
+#define PWM_LIGHT 26       // O pino GPIO do ESP32 conectado ao pino LED do display
+#endif
+
+#define PWM_CHANNEL 0      // Canal interno do gerador PWM no ESP32 (0 a 15)
+#define PWM_FREQ 300     // Frequência de 5 kHz (estabiliza o consumo de corrente)
+#define PWM_RESOLUTION 8   // Resolução de 8 bits (permite valores de 0 a 255)
+
+void set_display_brightness(int percent) {
+    // Trava de segurança: Garante que o usuário não ultrapasse os limites visíveis
+    if (percent < 10) percent = 10;
+    if (percent > 100) percent = 100;
+
+    // Mapeamento matemático proporcional:
+    // Converte a porcentagem gráfica (10% a 100%) para a escala física do PWM (30 a 255)
+    int pwm_val = map(percent, 10, 100, 30, 255);
+
+    // Aplica o sinal PWM ao canal de hardware (substitui o analogWrite)
+    ledcWrite(PWM_CHANNEL, pwm_val);
+}
 
 void play_track(const music_data &track) {
     Serial.println("\n--- CARREGANDO FAIXA ---");
@@ -173,139 +206,303 @@ static void btn_volume_cb(lv_event_t * e) {
         if (audio_volume > 30) audio_volume = 30;
         if (audio_volume < 0)  audio_volume = 0;
         lv_bar_set_value(bar_vol, audio_volume, LV_ANIM_ON);
+        LV_LOG_INFO("Audio Modified %02d", audio_volume);
         //myDFPlayer.volume(audio_volume)
     }
 }
+static void btn_repeat_cb(lv_event_t * e){
+    status_repeat = !status_repeat;
+    lv_obj_set_style_opa(icon_repeat, status_repeat ? LV_OPA_100 : LV_OPA_30, LV_PART_MAIN);
+    LV_LOG_INFO("Status repeat %s", status_repeat ? "Ativado" : "Desativado");
+}
+static void btn_random_cb(lv_event_t * e){
+    status_random = !status_random;
+    lv_obj_set_style_opa(icon_random, status_random ? LV_OPA_100 : LV_OPA_30, LV_PART_MAIN);
+    LV_LOG_INFO("Musica Aleatória %s", status_random ? "Ativado" : "Desativado");
+}
 
-void create_ui(){
+void create_ui() {
+    // =========================================================================
+    // 1. TELA PRINCIPAL (Fundo)
+    // =========================================================================
     menuScr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(menuScr, lv_color_hex(0x1E1E1E), 0);
+    lv_obj_set_style_bg_color(menuScr, lv_color_hex(0x1E1E1E), LV_PART_MAIN);
     lv_scr_load(menuScr);
 
-    data_att                    = lv_timer_create(att_timer, 30000, NULL);
-    label_data                  = lv_label_create(menuScr);
-    label_artist_name           = lv_label_create(menuScr);
-    label_song_name             = lv_label_create(menuScr);
-    label_song_time_max         = lv_label_create(menuScr);
-    label_song_time_now         = lv_label_create(menuScr);
-    bar_prog_mus                = lv_bar_create(menuScr);
-    button_play_pause           = lv_btn_create(menuScr);
-    img_play_pause              = lv_img_create(button_play_pause);
-    btn_vol_minus               = lv_btn_create(menuScr);
-    btn_vol_plus                = lv_btn_create(menuScr);
-    icon_vol_minus              = lv_img_create(btn_vol_minus);
-    icon_vol_plus               = lv_img_create(btn_vol_plus);
-    btn_next                    = lv_btn_create(menuScr);
-    btn_previous                = lv_btn_create(menuScr);
-    icon_next                   = lv_img_create(btn_next);
-    icon_previous               = lv_img_create(btn_previous);
-    list_music                  = lv_list_create(menuScr);
-    icon_ble                    = lv_img_create(menuScr);
-    icon_wifi                   = lv_img_create(menuScr);
-    bar_vol                     = lv_bar_create(menuScr);
-    icon_bar_vol_minus          = lv_img_create(menuScr);
-    icon_bar_vol_plus           = lv_img_create(menuScr);
 
-    lv_img_set_src(img_play_pause,     LV_SYMBOL_PLAY);
-    lv_img_set_src(icon_vol_minus,     LV_SYMBOL_VOLUME_MID);
-    lv_img_set_src(icon_bar_vol_minus, LV_SYMBOL_VOLUME_MID);
-    lv_img_set_src(icon_bar_vol_plus , LV_SYMBOL_VOLUME_MAX);
-    lv_img_set_src(icon_vol_plus ,     LV_SYMBOL_VOLUME_MAX);
-    lv_img_set_src(icon_next     ,     LV_SYMBOL_NEXT);
-    lv_img_set_src(icon_previous ,     LV_SYMBOL_PREV);
-    lv_img_set_src(icon_ble      ,     LV_SYMBOL_BLUETOOTH);
-    lv_img_set_src(icon_wifi     ,     LV_SYMBOL_WIFI);
+    // =========================================================================
+    // 2. BARRA SUPERIOR (Conectividade e Relógio)
+    // =========================================================================
+    icon_wifi = lv_img_create(menuScr);
+    lv_img_set_src(icon_wifi, LV_SYMBOL_WIFI);
+    lv_obj_set_style_opa(icon_wifi, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_align(icon_wifi, LV_ALIGN_TOP_LEFT, 5, 5);
 
+    icon_ble = lv_img_create(menuScr);
+    lv_img_set_src(icon_ble, LV_SYMBOL_BLUETOOTH);
+    lv_obj_set_style_opa(icon_ble, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_align_to(icon_ble, icon_wifi, LV_ALIGN_OUT_RIGHT_MID, 5, 0);
+
+    label_data = lv_label_create(menuScr);
+    lv_obj_set_style_text_font(label_data, &lv_font_unscii_8, LV_PART_MAIN);
+    
+    // Carga inicial do relógio para garantir o alinhamento correto da barra de brilho
+    DateTime now = rtc.now();
+    lv_label_set_text(label_data, rtc.begin() ? now.toString(buf) : "--/--/-- - --:--");
+    lv_obj_align_to(label_data, icon_ble, LV_ALIGN_OUT_RIGHT_MID, 6, 0);
+    
+    // Força o cálculo do tamanho do texto na tela imediatamente
+    lv_obj_update_layout(label_data); 
+    
+    data_att = lv_timer_create(att_timer, 30000, NULL);
+
+
+    // =========================================================================
+    // 3. BARRA SUPERIOR (Controle de Brilho Degradê Azul)
+    // =========================================================================
+    // Ícone Sol Mínimo
+    icon_bright_min = lv_img_create(menuScr);
+    lv_img_set_src(icon_bright_min, &img_sun_min); // Referência ao bitmap 15x15
+    lv_obj_set_style_img_recolor(icon_bright_min, lv_color_hex(0x1976D2), LV_PART_MAIN);
+    lv_obj_set_style_img_recolor_opa(icon_bright_min, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_opa(icon_bright_min, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_align_to(icon_bright_min, label_data, LV_ALIGN_OUT_RIGHT_MID, 16, 0);
+
+    // Slider de Brilho
+    bar_bright = lv_slider_create(menuScr);
+    lv_obj_set_size(bar_bright, 75, 6);
+    lv_slider_set_range(bar_bright, 10, 100);
+    lv_slider_set_value(bar_bright, light_level, LV_ANIM_OFF);
+    lv_obj_set_ext_click_area(bar_bright, 10); // Expande área de toque
+    
+    // Trilho (Fundo Escuro Azulado)
+    lv_obj_set_style_bg_color(bar_bright, lv_color_hex(0x222B36), LV_PART_MAIN);
+    lv_obj_set_style_radius(bar_bright, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    
+    // Preenchimento (Degradê Azul Escuro -> Azul Claro Ciano)
+    lv_obj_set_style_bg_grad_dir(bar_bright, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(bar_bright, lv_color_hex(0x0D47A1), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_grad_color(bar_bright, lv_color_hex(0x00E5FF), LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_bright, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+    
+    // Knob Circular (Puxador)
+    lv_obj_set_style_bg_color(bar_bright, lv_color_hex(0x00E5FF), LV_PART_KNOB);
+    lv_obj_set_style_pad_all(bar_bright, 2, LV_PART_KNOB);
+    
+    // ESPAÇAMENTO DE 15px PARA EVITAR COLISÃO DE ÁREA DE DESENHO (Bounding Box)
+    lv_obj_align_to(bar_bright, icon_bright_min, LV_ALIGN_OUT_RIGHT_MID, 15, 0);
+
+    // Ícone Sol Máximo
+    icon_bright_max = lv_img_create(menuScr);
+    lv_img_set_src(icon_bright_max, &img_sun_max); // Referência ao bitmap 15x15
+    lv_obj_set_style_img_recolor(icon_bright_max, lv_color_hex(0x00E5FF), LV_PART_MAIN);
+    lv_obj_set_style_img_recolor_opa(icon_bright_max, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_opa(icon_bright_max, LV_OPA_100, LV_PART_MAIN);
+    
+    // ESPAÇAMENTO DE 15px
+    lv_obj_align_to(icon_bright_max, bar_bright, LV_ALIGN_OUT_RIGHT_MID, 15, 0);
+
+    // Porcentagem do Brilho
+    label_light = lv_label_create(menuScr);
+    lv_label_set_text_fmt(label_light, "%d%%", light_level);
+    lv_obj_set_style_text_font(label_light, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label_light, lv_color_hex(0x00E5FF), LV_PART_MAIN);
+    lv_obj_align_to(label_light, icon_bright_max, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
+
+    // Evento do Brilho (Altera o texto e a variável interna)
+    lv_obj_add_event_cb(bar_bright, [](lv_event_t * e) {
+        lv_obj_t * slider = lv_event_get_target(e);
+        lv_obj_t * label  = (lv_obj_t *)lv_event_get_user_data(e);
+        if (label != NULL) {
+            // Atualiza a variável global
+            light_level = (int)lv_slider_get_value(slider);
+            // Atualiza o texto na tela ("80%")
+            lv_label_set_text_fmt(label, "%d%%", light_level);
+            // >>> NOVA CHAMADA <<<
+            // Envia o novo valor em tempo real para o hardware
+            set_display_brightness(light_level);
+        }
+    }, LV_EVENT_VALUE_CHANGED, (void *)label_light);
+
+
+    // =========================================================================
+    // 4. LATERAL ESQUERDA (Slider de Volume)
+    // =========================================================================
+    bar_vol = lv_bar_create(menuScr);
+    lv_obj_set_size(bar_vol, 5, 100);
     lv_bar_set_range(bar_vol, 0, 30);
     lv_bar_set_value(bar_vol, audio_volume, LV_ANIM_ON);
-
-    lv_obj_set_style_opa(icon_ble          , LV_OPA_50, LV_PART_MAIN);
-    lv_obj_set_style_opa(icon_wifi         , LV_OPA_50, LV_PART_MAIN);
-    lv_obj_set_style_opa(icon_bar_vol_minus, LV_OPA_80, LV_PART_MAIN);
-    lv_obj_set_style_opa(icon_bar_vol_plus , LV_OPA_80, LV_PART_MAIN);
-    
-    lv_obj_set_style_text_font(label_data         , &lv_font_unscii_8    , LV_PART_MAIN);
-    lv_obj_set_style_text_font(label_song_name    , &lv_font_montserrat_28, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label_song_time_now, &lv_font_montserrat_12, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label_song_time_max, &lv_font_montserrat_12, LV_PART_MAIN);
-
-    lv_obj_set_style_text_align(label_artist_name, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_set_style_text_align(label_song_name  , LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_label_set_long_mode(label_song_name, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    
-    lv_obj_add_event_cb(button_play_pause, btn_play_pause_cb, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(btn_vol_plus     , btn_volume_cb, LV_EVENT_ALL, (void *)(intptr_t)1);
-    lv_obj_add_event_cb(btn_vol_minus    , btn_volume_cb, LV_EVENT_ALL, (void *)(intptr_t)-1);
-    lv_obj_add_event_cb(bar_vol, [](lv_event_t * e){lv_bar_set_value(bar_vol, audio_volume, LV_ANIM_ON);} , LV_EVENT_VALUE_CHANGED, NULL);
-    
-    lv_obj_set_size(bar_prog_mus      , 240, 5);
-    lv_obj_set_size(button_play_pause , 40, 40);
-    lv_obj_set_size(btn_vol_minus     , 30, 30);
-    lv_obj_set_size(btn_vol_plus      , 30, 30);
-    lv_obj_set_size(btn_next          , 30, 30);
-    lv_obj_set_size(btn_previous      , 30, 30);
-    lv_obj_set_size(list_music        , 110 , 320);
-    lv_obj_set_size(bar_vol           , 5, 100);
-
-
-    lv_obj_set_width(label_song_name, 220);
-    lv_obj_set_width(label_artist_name, 240);
-    
-    lv_obj_set_style_text_align(label_artist_name, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    
-    lv_obj_center(icon_vol_minus);
-    lv_obj_center(icon_vol_plus);
-    lv_obj_center(img_play_pause);
-    lv_obj_center(icon_next);
-    lv_obj_center(icon_previous);
-    
-    lv_obj_set_style_radius(list_music       , 0               , LV_PART_MAIN);
-    lv_obj_set_style_radius(button_play_pause, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_radius(btn_vol_minus    , LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_radius(btn_vol_plus     , LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_radius(btn_next         , LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_radius(btn_previous     , LV_RADIUS_CIRCLE, LV_PART_MAIN);
-
     lv_obj_set_style_bg_color(bar_vol, lv_color_hex(0x484848), LV_PART_MAIN);
     lv_obj_set_style_bg_color(bar_vol, lv_color_hex(0x00E5FF), LV_PART_INDICATOR);
-    
-    DateTime now = rtc.now();
-    lv_label_set_text(label_data         , rtc.begin() ? now.toString(buf) : "--/--/-- - --:--");
-    
-    lv_obj_align(label_song_name , LV_ALIGN_LEFT_MID, 70, -40);
-    lv_obj_align(icon_wifi       , LV_ALIGN_TOP_LEFT, 5, 5);
-    lv_obj_align(list_music      , LV_ALIGN_RIGHT_MID, 0, 0);
-    lv_obj_align(bar_vol         , LV_ALIGN_TOP_LEFT, 10, 65);
-    
+    lv_obj_align(bar_vol, LV_ALIGN_TOP_LEFT, 10, 65);
+
+    icon_bar_vol_plus = lv_img_create(menuScr);
+    lv_img_set_src(icon_bar_vol_plus, LV_SYMBOL_VOLUME_MAX);
+    lv_obj_set_style_opa(icon_bar_vol_plus, LV_OPA_80, LV_PART_MAIN);
+    lv_obj_align_to(icon_bar_vol_plus, bar_vol, LV_ALIGN_OUT_TOP_MID, 0, -5);
+
+    icon_bar_vol_minus = lv_img_create(menuScr);
+    lv_img_set_src(icon_bar_vol_minus, LV_SYMBOL_MUTE);
+    lv_obj_set_style_opa(icon_bar_vol_minus, LV_OPA_80, LV_PART_MAIN);
+    lv_obj_align_to(icon_bar_vol_minus, bar_vol, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+
+
+    // =========================================================================
+    // 5. PAINEL CENTRAL (Info da Música e Progresso)
+    // =========================================================================
+    label_song_name = lv_label_create(menuScr);
+    lv_obj_set_width(label_song_name, 220);
+    lv_obj_set_style_text_font(label_song_name, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_set_style_text_align(label_song_name, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_label_set_long_mode(label_song_name, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_align(label_song_name, LV_ALIGN_LEFT_MID, 70, -40);
+
+    label_artist_name = lv_label_create(menuScr);
+    lv_obj_set_width(label_artist_name, 240);
+    lv_obj_set_style_text_align(label_artist_name, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align_to(label_artist_name, label_song_name, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-    lv_obj_align_to(bar_prog_mus, label_artist_name,    LV_ALIGN_OUT_BOTTOM_MID, 0, 30);
-    lv_obj_align_to(button_play_pause, bar_prog_mus,    LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-    lv_obj_align_to(label_song_time_now, bar_prog_mus,  LV_ALIGN_OUT_LEFT_MID,  -8, 0);
-    lv_obj_align_to(label_song_time_max, bar_prog_mus,  LV_ALIGN_OUT_RIGHT_MID,  8, 0);
-    lv_obj_align_to(btn_previous,  button_play_pause,   LV_ALIGN_OUT_LEFT_MID,  -10,0);
-    lv_obj_align_to(btn_next    , button_play_pause,    LV_ALIGN_OUT_RIGHT_MID,  10,0);
-    lv_obj_align_to(btn_vol_minus, btn_previous,        LV_ALIGN_OUT_LEFT_MID, -10, 0);
-    lv_obj_align_to(btn_vol_plus, btn_next,             LV_ALIGN_OUT_RIGHT_MID, 10, 0);
-    lv_obj_align_to(icon_ble   , icon_wifi,             LV_ALIGN_OUT_RIGHT_MID, 5, 0);
-    lv_obj_align_to(label_data    , icon_ble,           LV_ALIGN_OUT_RIGHT_MID, 5, 0);
-    lv_obj_align_to(icon_bar_vol_minus, bar_vol,        LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
-    lv_obj_align_to(icon_bar_vol_plus, bar_vol,         LV_ALIGN_OUT_TOP_MID, 0, -5);
+
+    bar_prog_mus = lv_bar_create(menuScr);
+    lv_obj_set_size(bar_prog_mus, 240, 5);
+    lv_obj_align_to(bar_prog_mus, label_artist_name, LV_ALIGN_OUT_BOTTOM_MID, 0, 30);
+
+    label_song_time_now = lv_label_create(menuScr);
+    lv_obj_set_style_text_font(label_song_time_now, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_align_to(label_song_time_now, bar_prog_mus, LV_ALIGN_OUT_LEFT_MID, -8, 0);
+
+    label_song_time_max = lv_label_create(menuScr);
+    lv_obj_set_style_text_font(label_song_time_max, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_align_to(label_song_time_max, bar_prog_mus, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
+
+
+    // =========================================================================
+    // 6. CONTROLES DE MÍDIA (Botões Centrais)
+    // =========================================================================
+    // Play / Pause
+    button_play_pause = lv_btn_create(menuScr);
+    lv_obj_set_size(button_play_pause, 40, 40);
+    lv_obj_set_style_radius(button_play_pause, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_align_to(button_play_pause, bar_prog_mus, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+    img_play_pause = lv_img_create(button_play_pause);
+    lv_img_set_src(img_play_pause, LV_SYMBOL_PLAY);
+    lv_obj_center(img_play_pause);
+    lv_obj_add_event_cb(button_play_pause, btn_play_pause_cb, LV_EVENT_CLICKED, NULL);
+
+    // Anterior
+    btn_previous = lv_btn_create(menuScr);
+    lv_obj_set_size(btn_previous, 30, 30);
+    lv_obj_set_style_radius(btn_previous, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_align_to(btn_previous, button_play_pause, LV_ALIGN_OUT_LEFT_MID, -10, 0);
+    icon_previous = lv_img_create(btn_previous);
+    lv_img_set_src(icon_previous, LV_SYMBOL_PREV);
+    lv_obj_center(icon_previous);
+
+    // Próximo
+    btn_next = lv_btn_create(menuScr);
+    lv_obj_set_size(btn_next, 30, 30);
+    lv_obj_set_style_radius(btn_next, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_align_to(btn_next, button_play_pause, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+    icon_next = lv_img_create(btn_next);
+    lv_img_set_src(icon_next, LV_SYMBOL_NEXT);
+    lv_obj_center(icon_next);
+
+    // Diminuir Volume
+    btn_vol_minus = lv_btn_create(menuScr);
+    lv_obj_set_size(btn_vol_minus, 30, 30);
+    lv_obj_set_style_radius(btn_vol_minus, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_align_to(btn_vol_minus, btn_previous, LV_ALIGN_OUT_LEFT_MID, -10, 0);
+    icon_vol_minus = lv_img_create(btn_vol_minus);
+    lv_img_set_src(icon_vol_minus, LV_SYMBOL_VOLUME_MID);
+    lv_obj_center(icon_vol_minus);
+    lv_obj_add_event_cb(btn_vol_minus, btn_volume_cb, LV_EVENT_SHORT_CLICKED, (void *)(intptr_t)-1);
+    lv_obj_add_event_cb(btn_vol_minus, btn_volume_cb, LV_EVENT_LONG_PRESSED_REPEAT, (void *)(intptr_t)-1);
+
+    // Aumentar Volume
+    btn_vol_plus = lv_btn_create(menuScr);
+    lv_obj_set_size(btn_vol_plus, 30, 30);
+    lv_obj_set_style_radius(btn_vol_plus, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_align_to(btn_vol_plus, btn_next, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+    icon_vol_plus = lv_img_create(btn_vol_plus);
+    lv_img_set_src(icon_vol_plus, LV_SYMBOL_VOLUME_MAX);
+    lv_obj_center(icon_vol_plus);
+    lv_obj_add_event_cb(btn_vol_plus, btn_volume_cb, LV_EVENT_SHORT_CLICKED, (void *)(intptr_t)1);
+    lv_obj_add_event_cb(btn_vol_plus, btn_volume_cb, LV_EVENT_LONG_PRESSED_REPEAT, (void *)(intptr_t)1);
+
+
+    // =========================================================================
+    // 7. MODIFICADORES (Random e Repeat) - Botões Transparentes
+    // =========================================================================
+    btn_random = lv_btn_create(menuScr);
+    lv_obj_set_size(btn_random, 45, 45);
+    
+    // Removemos os fundos e as sombras para ficar apenas o ícone clicável
+    lv_obj_set_style_bg_opa(btn_random, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(btn_random, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_opa(btn_random, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(btn_random, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_shadow_opa(btn_random, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(btn_random, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_align_to(btn_random, btn_previous, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+    
+    icon_random = lv_img_create(btn_random);
+    lv_img_set_src(icon_random, LV_SYMBOL_SHUFFLE);
+    lv_obj_set_style_opa(icon_random, LV_OPA_30, LV_PART_MAIN); // Inicia escurecido (Desligado)
+    lv_obj_center(icon_random);
+    lv_obj_add_event_cb(btn_random, btn_random_cb, LV_EVENT_CLICKED, NULL);
+
+    btn_repeat = lv_btn_create(menuScr);
+    lv_obj_set_size(btn_repeat, 45, 45);
+    
+    lv_obj_set_style_bg_opa(btn_repeat, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(btn_repeat, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_opa(btn_repeat, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(btn_repeat, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_shadow_opa(btn_repeat, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(btn_repeat, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_align_to(btn_repeat, btn_next, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+    
+    icon_repeat = lv_img_create(btn_repeat);
+    lv_img_set_src(icon_repeat, LV_SYMBOL_LOOP);
+    lv_obj_set_style_opa(icon_repeat, LV_OPA_30, LV_PART_MAIN); // Inicia escurecido (Desligado)
+    lv_obj_center(icon_repeat);
+    lv_obj_add_event_cb(btn_repeat, btn_repeat_cb, LV_EVENT_CLICKED, NULL);
+
+
+    // =========================================================================
+    // 8. LATERAL DIREITA (Lista de Músicas)
+    // =========================================================================
+    list_music = lv_list_create(menuScr);
+    lv_obj_set_size(list_music, 110, 320);
+    lv_obj_set_style_radius(list_music, 0, LV_PART_MAIN);
+    lv_obj_align(list_music, LV_ALIGN_RIGHT_MID, 0, 0);
 
     lv_list_add_text(list_music, "Musicas Salvas:");
-    for(int i = 0; i < (sizeof(playlist)/sizeof(playlist[0])); i++) {
+    for(size_t i = 0; i < (sizeof(playlist)/sizeof(playlist[0])); i++) {
         add_audio_list_item(list_music, &playlist[i]);
     }
-    play_track(playlist[0]);
 }
 
-void setup()
-{
+
+void setup() {
     Serial.begin(115200);
     rtc.begin();
+
+    // 1. Configura o gerador de PWM de hardware do ESP32
+    ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+
+    // 2. Vincula o pino físico ao canal PWM configurado
+    ledcAttachPin(PWM_LIGHT, PWM_CHANNEL);
+
+    // 3. Aplica o brilho inicial (ex: 50%) ANTES de iniciar a tela gráficamente.
+    // Isso impede que o display inicie piscando ou com brilho máximo indesejado.
+    set_display_brightness(light_level);
+
+    // Inicialização do restante do sistema
     display_init();
     create_ui();
+    lv_refr_now(NULL);
+    play_track(playlist[0]);
 }
-
 void loop()
 {
     display_update();
