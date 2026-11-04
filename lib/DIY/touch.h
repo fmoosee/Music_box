@@ -3,9 +3,9 @@
 
 #include <FT6336.h>
 
-#define TOUCH_FT6336_SCL 22
-#define TOUCH_FT6336_SDA 21
-#define TOUCH_FT6336_INT 14
+#define TOUCH_FT6336_SCL 25
+#define TOUCH_FT6336_SDA 32
+#define TOUCH_FT6336_INT 34
 #define TOUCH_FT6336_RST 33
 
 // Coordenadas para o toque 1

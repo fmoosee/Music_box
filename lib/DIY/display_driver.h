@@ -9,10 +9,10 @@
 
 // Nova pinagem sequencial para cabo flat
 #define PIN_TFT_CS    5
-#define PIN_TFT_RST  17
-#define PIN_TFT_DC   16
+#define PIN_TFT_RST  18
+#define PIN_TFT_DC   21
 #define PIN_TFT_MOSI 23
-#define PIN_TFT_SCLK 18
+#define PIN_TFT_SCLK 26
 
 void display_init();
 void display_update();

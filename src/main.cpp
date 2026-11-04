@@ -4,12 +4,18 @@
 #include <DFRobotDFPlayerMini.h>
 #include <HardwareSerial.h>
 #include "sun_icons.h"
+#include "Wire.h"
 
 // -------------------------------------------------------------------------
 // DEFINIÇÕES DO MÓDULO DE ÁUDIO E RTC
 // -------------------------------------------------------------------------
-#define RX_PIN 25
-#define TX_PIN 26
+#define RX_PIN 16
+#define TX_PIN 17
+
+#define ANALOG_PIN 36
+
+#define RTC_SDA 27
+#define RTC_SCL 14
 
 HardwareSerial myHardwareSerial(2);
 DFRobotDFPlayerMini myDFPlayer;
@@ -699,11 +705,11 @@ void printDFPlayerStatus() {
 // -------------------------------------------------------------------------
 
 void setup() {
+    Wire1.begin(RTC_SDA, RTC_SCL, 100000);
     Serial.begin(115200);
-    rtcisrunning = rtc.begin();
+    rtcisrunning = rtc.begin(&Wire1);
+    pinMode(ANALOG_PIN, INPUT);
     
-    randomSeed(analogRead(0));
-
     display_init();
     create_ui();
     lv_refr_now(NULL);
