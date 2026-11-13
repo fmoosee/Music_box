@@ -422,9 +422,10 @@ void btn_play_pause_cb(lv_event_t * e) {
     }
 }
 
-void att_timer(lv_timer_t * timer){
+void att_timer(lv_timer_t * timer) {
     DateTime now = rtc.now();
-    lv_label_set_text(label_data, rtcisrunning ? now.toString(buf) : "--/--/-- - --:--");
+    char date_buf[] = "DD/MM/YY - hh:mm";
+    lv_label_set_text(label_data, rtcisrunning ? now.toString(date_buf) : "--/--/-- - --:--");
 }
 
 // Novo Callback de Botões Volume (+ e -)
@@ -503,7 +504,8 @@ void create_ui() {
     label_data = lv_label_create(menuScr);
     lv_obj_set_style_text_font(label_data, &lv_font_unscii_8, LV_PART_MAIN);
     DateTime now = rtc.now();
-    lv_label_set_text(label_data, rtcisrunning ? now.toString(buf) : "--/--/-- - --:--");
+    char date_buf[] = "DD/MM/YY - hh:mm";
+    lv_label_set_text(label_data, rtcisrunning ? now.toString(date_buf) : "--/--/-- - --:--");
     lv_obj_align_to(label_data, icon_ble, LV_ALIGN_OUT_RIGHT_MID, 6, 0);
     lv_obj_update_layout(label_data);
     
@@ -669,7 +671,10 @@ void create_ui() {
     lv_obj_add_event_cb(standbyScr, standby_touch_cb, LV_EVENT_CLICKED, NULL);
 
     lv_timer_create(update_progress_timer_cb, 1000, NULL);
-    lv_timer_create([](lv_timer_t * timer){rtcisrunning = rtc.begin();}, 10000, NULL);
+    lv_timer_create([](lv_timer_t * timer) {
+        Wire1.beginTransmission(0x68);
+        rtcisrunning = (Wire1.endTransmission() == 0);
+    }, 10000, NULL);
 }
 
 // -------------------------------------------------------------------------
