@@ -3,7 +3,6 @@
 #include <RTClib.h>
 #include <DFRobotDFPlayerMini.h>
 #include <HardwareSerial.h>
-#include "sun_icons.h"
 #include "Wire.h"
 
 // -------------------------------------------------------------------------
@@ -147,6 +146,7 @@ void initAudioModule() {
 }
 
 void play_track(int index, bool auto_play = true);
+void advance_to_next_track();
 void update_standby_clock();
 void enter_standby();
 void exit_standby();
@@ -183,6 +183,33 @@ static void standby_touch_cb(lv_event_t * e) {
     }
 }
 
+void advance_to_next_track() {
+    if (status_repeat) {
+        play_track(current_track_index);
+    } 
+    else if (status_random) {
+        shuffle_pos++;
+        if (shuffle_pos >= TOTAL_TRACKS) {
+            generate_shuffle_queue(); 
+        }
+        play_track(shuffle_queue[shuffle_pos]);
+    } 
+    else {
+        int next_idx = current_track_index + 1;
+        
+        if (next_idx < TOTAL_TRACKS) {
+            play_track(next_idx);
+        } else {
+            button_play_pause_state = false;
+            lv_img_set_src(img_play_pause, LV_SYMBOL_PLAY);
+            current_song_time = 0;
+            lv_bar_set_value(bar_prog_mus, 0, LV_ANIM_OFF);
+            lv_label_set_text(label_song_time_now, "0:00");
+            myDFPlayer.stop(); 
+        }
+    }
+}
+
 void update_progress_timer_cb(lv_timer_t * timer) {
     if (button_play_pause_state == false) {
         standby_idle_seconds++;
@@ -209,48 +236,37 @@ void update_progress_timer_cb(lv_timer_t * timer) {
             lv_label_set_text_fmt(label_song_time_now, "%d:%02d", min, sec);
         } else {
             lv_refr_now(NULL);
-            
-            if (status_repeat) {
-                play_track(current_track_index);
-            } 
-            else if (status_random) {
-                shuffle_pos++;
-                if (shuffle_pos >= TOTAL_TRACKS) {
-                    generate_shuffle_queue(); 
-                }
-                play_track(shuffle_queue[shuffle_pos]);
-            } 
-            else {
-                int next_idx = current_track_index + 1;
-                
-                if (next_idx < TOTAL_TRACKS) {
-                    play_track(next_idx);
-                } else {
-                    button_play_pause_state = false;
-                    lv_img_set_src(img_play_pause, LV_SYMBOL_PLAY);
-                    current_song_time = 0;
-                    lv_bar_set_value(bar_prog_mus, 0, LV_ANIM_OFF);
-                    lv_label_set_text(label_song_time_now, "0:00");
-                    myDFPlayer.stop(); 
-                }
-            }
+            advance_to_next_track();
         }
     }
 }
 
 void update_current_reading() {
-    uint32_t soma = 0;
-    for (int i = 0; i < 16; i++) {
-        soma += analogRead(ANALOG_PIN);
-    }
-    float leitura_media = soma / 16.0f;
+    static float corrente_filtrada = 0.0f;
+    static bool primeira_leitura = true;
 
-    // Escala linear: 0 -> 0.00 A | 4095 (100%) -> 5.00 A
-    float corrente_A = (leitura_media / 4095.0f) * 5.0f;
+    uint32_t soma_mv = 0;
+    for (int i = 0; i < 16; i++) {
+        soma_mv += analogReadMilliVolts(ANALOG_PIN); // Leitura calibrada de fábrica em mV (0 a 3300 mV)
+    }
+    float mv_medio = soma_mv / 16.0f;
+
+    // Escala linear: 0 mV -> 0.00 A | 3300 mV (100%) -> 5.00 A
+    float corrente_nova = (mv_medio / 3300.0f) * 5.0f;
+    if (corrente_nova < 0.0f) corrente_nova = 0.0f;
+    if (corrente_nova > 5.0f) corrente_nova = 5.0f;
+
+    // Filtro exponencial (EMA) para estabilizar a exibição na tela
+    if (primeira_leitura) {
+        corrente_filtrada = corrente_nova;
+        primeira_leitura = false;
+    } else {
+        corrente_filtrada = 0.3f * corrente_nova + 0.7f * corrente_filtrada;
+    }
 
     // Usa snprintf padrão do C++ porque LV_SPRINTF_USE_FLOAT está 0 no lv_conf.h
     char amp_buf[12];
-    snprintf(amp_buf, sizeof(amp_buf), "%.2f A", corrente_A);
+    snprintf(amp_buf, sizeof(amp_buf), "%.2f A", corrente_filtrada);
     lv_label_set_text(label_current, amp_buf);
 }
 
@@ -275,6 +291,7 @@ void play_track(int index, bool auto_play) {
         if (i == index) {
             lv_obj_set_style_bg_color(list_btns[i], lv_color_hex(0x2A2A2A), LV_PART_MAIN);
             lv_obj_set_style_bg_opa(list_btns[i], LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_scroll_to_view(list_btns[i], LV_ANIM_ON);
         } else {
             lv_obj_set_style_bg_opa(list_btns[i], LV_OPA_TRANSP, LV_PART_MAIN);
         }
@@ -389,33 +406,13 @@ lv_obj_t * add_audio_list_item(lv_obj_t * parent, const music_data * song) {
     lv_obj_set_width(label_index, 26); 
     lv_obj_align(label_index, LV_ALIGN_LEFT_MID, 2, 1);
 
-    lv_obj_t * icon_box = lv_obj_create(btn);
-    lv_obj_set_size(icon_box, 30, 32);
-    lv_obj_set_style_bg_opa(icon_box, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(icon_box, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(icon_box, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(icon_box, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_align_to(icon_box, label_index, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
-
-    lv_obj_t * icon_file = lv_label_create(icon_box);
-    lv_label_set_text(icon_file, LV_SYMBOL_FILE);
-    lv_obj_set_style_text_font(icon_file, &lv_font_montserrat_22, LV_PART_MAIN);
-    lv_obj_set_style_text_color(icon_file, lv_color_hex(0x9E9E9E), LV_PART_MAIN);
-    lv_obj_center(icon_file);
-
-    lv_obj_t * icon_audio = lv_label_create(icon_box);
-    lv_label_set_text(icon_audio, LV_SYMBOL_AUDIO);
-    lv_obj_set_style_text_font(icon_audio, &lv_font_montserrat_12, LV_PART_MAIN);
-    lv_obj_set_style_text_color(icon_audio, lv_color_hex(0x101010), LV_PART_MAIN);
-    lv_obj_align(icon_audio, LV_ALIGN_CENTER, 0, 2);
-
     lv_obj_t * label_title = lv_label_create(btn);
     lv_label_set_text(label_title, song->name); 
     lv_obj_set_style_text_font(label_title, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(label_title, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
     lv_label_set_long_mode(label_title, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_obj_align_to(label_title, icon_box, LV_ALIGN_OUT_RIGHT_MID, 2, 0);
-    lv_obj_set_width(label_title, 45); 
+    lv_obj_align_to(label_title, label_index, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
+    lv_obj_set_width(label_title, 85); 
     lv_obj_set_style_anim_speed(label_title, 20, LV_PART_MAIN);
 
     lv_obj_add_event_cb(btn, song_item_clicked_cb, LV_EVENT_CLICKED, (void *)song);
@@ -718,7 +715,10 @@ void printDFPlayerStatus() {
             case DFPlayerCardOnline: Serial.println("Cartao SD Online!"); break;
             case DFPlayerPlayFinished: 
                 Serial.print("Terminou a faixa: "); 
-                Serial.println(value); 
+                Serial.println(value);
+                if (button_play_pause_state && value == playlist[current_track_index].index_pos && current_song_time > 2) {
+                    advance_to_next_track();
+                }
                 break;
             case DFPlayerError: 
                 Serial.print("Erro! Codigo: "); 
