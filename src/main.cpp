@@ -166,22 +166,6 @@ void enter_standby() {
     Serial.println("\n[STANDBY] Modo descanso ativado");
 }
 
-void update_current_reading() {
-    uint32_t soma = 0;
-    for (int i = 0; i < 16; i++) {
-        soma += analogRead(ANALOG_PIN);
-    }
-    float leitura_media = soma / 16.0f;
-
-    // Escala linear: 0 -> 0.00 A | 4095 (100%) -> 5.00 A
-    float corrente_A = (leitura_media / 4095.0f) * 5.0f;
-
-    // Usa snprintf padrão do C++ porque LV_SPRINTF_USE_FLOAT está 0 no lv_conf.h
-    char amp_buf[12];
-    snprintf(amp_buf, sizeof(amp_buf), "%.2f A", corrente_A);
-    lv_label_set_text(label_current, amp_buf);
-}
-
 void exit_standby() {
     is_in_standby = false;
     standby_idle_seconds = 0;
@@ -252,6 +236,22 @@ void update_progress_timer_cb(lv_timer_t * timer) {
             }
         }
     }
+}
+
+void update_current_reading() {
+    uint32_t soma = 0;
+    for (int i = 0; i < 16; i++) {
+        soma += analogRead(ANALOG_PIN);
+    }
+    float leitura_media = soma / 16.0f;
+
+    // Escala linear: 0 -> 0.00 A | 4095 (100%) -> 5.00 A
+    float corrente_A = (leitura_media / 4095.0f) * 5.0f;
+
+    // Usa snprintf padrão do C++ porque LV_SPRINTF_USE_FLOAT está 0 no lv_conf.h
+    char amp_buf[12];
+    snprintf(amp_buf, sizeof(amp_buf), "%.2f A", corrente_A);
+    lv_label_set_text(label_current, amp_buf);
 }
 
 // -------------------------------------------------------------------------
@@ -527,6 +527,7 @@ void create_ui() {
     lv_obj_update_layout(label_data);
     
     data_att = lv_timer_create(att_timer, 30000, NULL);
+
     label_current = lv_label_create(menuScr);
     lv_obj_set_style_text_font(label_current, &lv_font_unscii_8, LV_PART_MAIN);
     lv_obj_set_style_text_color(label_current, lv_color_hex(0x00E5FF), LV_PART_MAIN);
@@ -744,6 +745,7 @@ void setup() {
     create_ui();
     lv_refr_now(NULL);
     
+    randomSeed(esp_random());
     generate_shuffle_queue();
     
     initAudioModule();
