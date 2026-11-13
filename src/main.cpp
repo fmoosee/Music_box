@@ -150,6 +150,7 @@ void play_track(int index, bool auto_play = true);
 void update_standby_clock();
 void enter_standby();
 void exit_standby();
+void update_current_reading();
 
 void update_standby_clock() {
     DateTime now = rtc.now();
